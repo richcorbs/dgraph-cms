@@ -4,10 +4,10 @@ This is a simple CMS built on Dgraph.
 
 - The front end is Tailwind CSS and AlpineJS.
 - The repo doesn't include any of the built CSS. If you try to use it as it is it will be ugly. You've been warned.
-- There are no `@auth` rules built in.
+- There are no `@auth` rules built in to the schema.
 - To use it you'll need to:
-  - Incorporate it into a Tailwind project or hook it up to Tailwind via CDN or some other way.
-  - Update the `backendUrl` variable with the URL of your Dgraph instance.
+  - Incorporate hook it up to Tailwind via your favorite method.
+  - Update the `backendUrl` variable in the javascript with the URL of your Dgraph instance.
   - Copy the contents of schema.graphql into your graphql schema in Dgraph.
   - Use GraphQL to create your first piece of content. After that you can use the UI in index.html.
 
