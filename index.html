@@ -1,0 +1,409 @@
+<!DOCTYPE html><html lang="en"><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="">
+
+  <title>Dgraph CMS</title>
+
+  <script src="//unpkg.com/alpinejs" defer=""></script>
+
+  <link rel="stylesheet" href="/styles/index.css">
+</head>
+
+<body class="bg-white">
+
+<div x-data="cms()" x-init="init()">
+  <div class="flex justify-between">
+    <h2 class="text-3xl font-light w-72">Dgraph CMS</h2>
+    <div x-show="jwt" class="text-white flex items-center justify-center">
+      <button class="ml-2 px-2 py-1 bg-black border border-black uppercase text-white" @click="signOut()">Sign Out</button>
+    </div>
+    <div x-show="!jwt" class="flex items-center">
+      <input class="border border-black px-2 py-1" type="password" x-model="password">
+      <button class="ml-2 px-2 py-1 bg-black border border-black uppercase text-white" @click="signIn()">Sign In</button>
+    </div>
+  </div>
+  <div x-show="working" class="absolute top-0 left-0 w-full h-full bg-black opacity-75 flex items-center justify-center text-4xl text-white"><div>Working...</div></div>
+
+  <div class="flex h-screen pb-36 pr-2">
+    <div class="w-72">
+      <template x-for="content in flattenedContent()">
+        <div class="px-2 hover:bg-gray-100 w-72 flex items-center justify-between" :class="{ 'bg-gray-200': (currentContent.id === content.id), 'hidden': (!showElement(content)) }">
+          <div :class="`ml-${ contentLevel(content) * 4 }`" class="py-2 cursor-pointer truncate hover:bg-gray-100 flex items-center" @click="getContent(content.id)">
+            <span class="truncate" x-text="content.title"></span>
+            <svg x-show="content.live === true" xmlns="http://www.w3.org/2000/svg" class="ml-2 text-green-600 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z"></path>
+            </svg>
+            <svg x-show="content.live !== true" xmlns="http://www.w3.org/2000/svg" class="ml-2 text-gray-300 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z"></path>
+            </svg>
+          </div>
+          <svg x-show="content.children &amp;&amp; content.children.length > 0 &amp;&amp; !closedElements.includes(content.id)" xmlns="http://www.w3.org/2000/svg" class="cursor-pointer h-5 w-5" viewBox="0 0 20 20" fill="currentColor" @click="toggleElement(content.id)">
+            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+          </svg>
+          <svg x-show="content.children &amp;&amp; content.children.length > 0 &amp;&amp; closedElements.includes(content.id)" xmlns="http://www.w3.org/2000/svg" class="cursor-pointer h-5 w-5" viewBox="0 0 20 20" fill="currentColor" @click="toggleElement(content.id)">
+            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+          </svg>
+        </div>
+      </template>
+    </div>
+
+    <div class="px-4 py-0 w-full min-h-full">
+      <div class="flex-grow ml-0 pl-4 pr-4">
+        <div x-show="currentContent.id">
+          <div class="flex items-center justify-between pr-2 text-xs">
+            <div class="flex items-center">
+              <label class="text-xs mt-2">ID: <span class="text-xs" x-text="currentContent.id"></span></label>
+              <label class="ml-4 mt-2 text-xs uppercase inline-flex items-center">LIVE: <input type="checkbox" class="ml-3 h-5 w-5" x-model="currentContent.live"></label>
+              <label class="ml-4 mt-2 text-xs uppercase inline-flex items-center">TYPE:</label>
+              <div class="inline-block relative w-32" @click.away="nodeTypeDropdownOpen = false">
+                <button class="mt-2 focus:outline-none flex items-center justify-between cursor-pointer border border-gray-400 rounded ml-2 pl-3 pr-2 py-1 w-32" @click="nodeTypeDropdownOpen = !nodeTypeDropdownOpen">
+                  <span x-text="currentContent.contentType"></span>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="clickable h-6 w-6 transform origin-center" :class="nodeTypeDropdownOpen === true ? '-rotate-90' : 'rotate-90'" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                  </svg>
+                </button>
+
+                <ul x-show="nodeTypeDropdownOpen" class="ml-2 bg-white absolute mt-2 border rounded w-28 py-1">
+                  <li><a href="#" class="py-1 px-3 block hover:bg-gray-300" @click="setCurrentNodeContentType('HTML')">HTML</a>
+                  </li><li><a href="#" class="py-1 px-3 block hover:bg-gray-300" @click="setCurrentNodeContentType('JSON')">JSON</a></li>
+                  <li><a href="#" class="py-1 px-3 block hover:bg-gray-300" @click="setCurrentNodeContentType('MARKDOWN')">MARKDOWN</a></li>
+                  <li><a href="#" class="py-1 px-3 block hover:bg-gray-300" @click="setCurrentNodeContentType('TEXT')">TEXT</a></li>
+                </ul>
+              </div>
+            </div>
+            <div class="flex items-center">
+              <label class="ml-8 mt-2 text-xs uppercase">Parent:</label>
+              <div class="inline-block relative w-40" @click.away="nodeParentDropdownOpen = false">
+                <button class="mt-2 focus:outline-none flex items-center justify-between cursor-pointer border border-gray-400 rounded ml-2 pl-3 pr-2 py-1 w-40" @click="nodeParentDropdownOpen = !nodeParentDropdownOpen">
+                  <span class="truncate" x-text="currentContent.parent?.id &amp;&amp; nodeFromId(currentContent.parent?.id).title"></span>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="clickable h-6 w-6 transform origin-center" :class="nodeParentDropdownOpen === true ? '-rotate-90' : 'rotate-90'" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                  </svg>
+                </button>
+
+                <ul x-show="nodeParentDropdownOpen" class="ml-2 bg-white absolute mt-2 border rounded w-40 py-1">
+                  <li x-show="currentContent.parent"><a href="#" class="py-1 px-3 block hover:bg-gray-300" @click="setCurrentNodeParent(null)">Top Level</a></li>
+                  <template x-for="node in nodesNotMatchingIds(currentContent)">
+                    <li><a href="#" class="truncate py-1 px-3 block hover:bg-gray-300" @click="setCurrentNodeParent(node)" x-text="node.title"></a></li>
+                  </template>
+                </ul>
+              </div>
+              <button :disabled="currentContent.id === 'UNSAVED'" class="flex items-center ml-3 mt-2 px-2 py-2 uppercase hover:bg-gray-200" @click="addChildOrSibling('CHILD')">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"></path>
+                </svg>
+                Child
+              </button>
+              <button :disabled="currentContent.id === 'UNSAVED'" class="flex items-center ml-1 mt-2 px-2 py-2 uppercase hover:bg-gray-200" @click="addChildOrSibling('SIBLING')">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"></path>
+                </svg>
+                Sibling
+              </button>
+            </div>
+          </div>
+          <label class="mt-4 block text-xs uppercase">Title:</label>
+          <input type="text" x-model="currentContent.title" class="w-full px-3 py-2 border">
+          <label class="mt-4 block text-xs uppercase">Slug:</label>
+          <input type="text" x-model="currentContent.slug" class="w-full px-3 py-2 border">
+          <label class="mt-4 block text-xs uppercase">Content:</label>
+          <textarea x-model="currentContent.content" rows="10" class="w-full px-3 py-3 border font-mono"></textarea>
+          <div class="mb-8 flex justify-between items-center">
+            <div>
+              <button x-show="currentContent.id === 'UNSAVED'" class="mt-2 px-4 py-2 uppercase hover:bg-gray-600 bg-black text-white border border-black" @click="addContent()">Add Item</button>
+              <button x-show="currentContent.id !== 'UNSAVED'" class="mt-2 px-4 py-2 uppercase hover:bg-gray-600 bg-black text-white border border-black" @click="saveCurrentContent()">Save Item</button>
+              <button class="mt-2 px-4 py-2 uppercase hover:bg-gray-300" @click="setCurrentContent({})">Cancel</button>
+            </div>
+            <div>
+              </div>
+              <button x-show="currentContent.key &amp;&amp; !deletingNode" class="w-40 ml-4 mt-2 px-4 py-2 uppercase hover:bg-red-500 text-white bg-red-400" @click="deletingNode = true">Delete Item</button>
+              <button x-show="deletingNode" class="w-40 ml-4 mt-2 px-4 py-2 uppercase hover:bg-green-500 text-white bg-green-400" @click="deleteCurrentNode()" @click.away="deletingNode = false">Confirm</button>
+            </div>
+          </div>
+        </div>
+        <!-- <pre class="bg-gray-100 rounded-sm p-4 border" x-text="JSON.stringify(currentContent, null, 2)"></pre> -->
+      </div>
+      <!-- <div class="font-mono whitespace-pre-wrap" x-text="JSON.stringify(currentContent, null, 2)"></div> -->
+    </div>
+  </div>
+</div>
+
+<script>
+  function cms () {
+    return {
+      backendUrl: 'https://YOUR-URL-GOES-HERE.aws.cloud.dgraph.io/graphql',
+      closedElements: [],
+      currentContent: {},
+      deletingNode: false,
+      jwt: null,
+      nodes: [],
+      nodeParentDropdownOpen: false,
+      nodeTypeDropdownOpen: false,
+      password: null,
+      projects: [],
+      working: false,
+
+      addChildOrSibling (childOrSibling) {
+        var newContent = {
+          id: 'UNSAVED',
+          title: 'Title',
+          slug: 'Slug',
+          content: null,
+          live: false,
+        }
+        if (childOrSibling === 'CHILD') newContent.parent = { id: this.currentContent.id }
+        else if (this.currentContent.parent) newContent.parent = { id: this.currentContent.parent.id }
+        this.setCurrentContent(newContent)
+      },
+
+      async addContent () {
+        var parentString = this.currentContent.parent ? `, parent: { id: "${ this.currentContent.parent.id }" }` : ''
+        var inputString = `{title: "${ this.currentContent.title }", slug: "${ this.currentContent.slug || '' }", contentType: ${ this.currentContent.contentType || 'TEXT' }, content: "${ this.currentContent.content || '' }", live: ${ this.currentContent.live }${parentString}}`
+        var mutation = `
+          mutation addContent {
+            addContent(input: ${inputString}) {
+              numUids
+              content {
+                id
+                title
+                slug
+                content
+                live
+                parent {
+                  id
+                  title
+                }
+              }
+            }
+          }
+        `
+        var response = await this.mutateData(mutation)
+        this.currentContent = response.data.addContent.content[0]
+        await this.getSideMenuData()
+      },
+
+      contentLevel (content) {
+        var tempParent = content
+        var rootParent = null
+        var level = 0
+        while (tempParent.parent) {
+          if (content.parent === null) rootParent = content
+          else {
+            tempParent = this.nodeFromId(tempParent.parent.id)
+            level += 1
+          }
+        }
+        return level
+      },
+
+      flatten (array) {
+        const _this = this
+        var result = [];
+        array.forEach(function (a) {
+          result.push(a)
+          if (Array.isArray(a.children)) {
+            result = result.concat(_this.flatten(a.children))
+          }
+        })
+        return result
+      },
+
+      flattenedContent () {
+        return this.flatten(this.projects)
+      },
+
+      async getData (query) {
+        var response = await fetch(
+          this.backendUrl,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              query: query
+            })
+          }
+        ).then(async (result) => {
+          const json = await result.json()
+          return json
+        });
+        return response
+      },
+
+      async getContent (id) {
+        this.working = true
+        var query = `query {
+          queryContent (filter: { id: "${id}" }) {
+            id
+            title
+            contentType
+            slug
+            content
+            live
+            parent {
+              id
+            }
+          }
+        }`
+
+        var response = await this.getData(query)
+        this.working = false
+        this.setCurrentContent(response.data.queryContent[0])
+      },
+
+      async getSideMenuData () {
+        var query = `query MyQuery {
+          nestedContent:queryContent(order: {asc: title}, filter: {not: {has: parent}}) {
+            ...contentFields
+            children(order: {asc: title}) {
+              ...contentFields
+              children(order: {asc: title}) {
+                ...contentFields
+                children(order: {asc: title}) {
+                  ...contentFields
+                  children(order: {asc: title}) {
+                    ...contentFields
+                  }
+                }
+              }
+            }
+          }
+          listedContent:queryContent {
+            ...contentFields
+          }
+        }
+        fragment contentFields on Content {
+          id
+          title
+          live
+          parent {
+            id
+          }
+        }`
+
+        var response = await this.getData(query)
+        this.working = false
+        this.projects = response.data.nestedContent
+        this.nodes = response.data.listedContent
+      },
+
+      async init () {
+        this.working = true
+        this.getSideMenuData()
+      },
+
+      async mutateData (mutation) {
+        var response = await fetch(
+          this.backendUrl,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              query: mutation
+            })
+          }
+        ).then(async (result) => {
+          const json = await result.json()
+          return json
+        });
+        return response
+      },
+
+      nodeFromId (id) {
+        return this.nodes.filter(n => n.id === id)[0]
+      },
+
+      nodesNotMatchingIds (node) {
+        var nodes = []
+        return this.nodes.filter(n => (n.id !== node.id))
+      },
+
+      async saveCurrentContent () {
+        this.working = true
+        var setString = `{title: "${ this.currentContent.title }", slug: "${ this.currentContent.slug || '' }", contentType: ${ this.currentContent.contentType || 'TEXT' }, content: "${ this.currentContent.content || '' }", live: ${ this.currentContent.live }}`
+        var mutation = `
+          mutation updateContent {
+            updateContent(input: {filter: {id: "${this.currentContent.id}"}, set: ${setString} }) {
+              numUids
+            }
+          }
+        `
+        await this.mutateData(mutation)
+        await this.getSideMenuData()
+        this.working = false
+      },
+
+      setCurrentContent (content) {
+        this.working = true
+        if (this.currentContent.id === content.id) this.currentContent = {}
+        else this.currentContent = content
+        this.working = false
+      },
+
+      async setCurrentNodeContentType (type) {
+        this.working = true
+        this.nodeTypeDropdownOpen = false
+        this.currentContent.contentType = type
+        await this.getSideMenuData()
+        this.working = false
+      },
+
+      async setCurrentNodeParent (parent) {
+        this.working = true
+        this.nodeParentDropdownOpen = false
+        var setString = ''
+        setString = (parent && parent.id) ? `set: { parent: { id: "${parent.id}" } }` : `remove: { parent: { id: "${this.currentContent.parent.id}" } }`
+        var mutation = `
+          mutation updateParent {
+            updateContent(input: {filter: {id: "${this.currentContent.id}"}, ${ setString } }) {
+              numUids
+            }
+          }
+        `
+        await this.mutateData(mutation)
+        await this.getSideMenuData()
+        this.currentContent = this.nodeFromId(this.currentContent.id)
+        this.working = false
+      },
+
+      showElement (content) {
+        if (!content.parent) return true
+        var tempParent = this.nodeFromId(content.id)
+        var showElement = true
+        while (tempParent.parent && showElement === true) {
+          if (this.closedElements.includes(tempParent.parent.id)) showElement = false
+          tempParent = this.nodeFromId(tempParent.parent.id)
+        }
+        return showElement
+      },
+
+      async signIn () {
+        const mutation = `
+          mutation MyMutation {
+            signIn(password: "${this.password}")
+          }
+        `
+        const response = await this.mutateData(mutation)
+        console.log('response', response);
+        this.jwt = response.data.signIn
+      },
+
+      signOut () {
+        this.jwt = null
+      },
+
+      toggleElement (elementId) {
+        this.$nextTick(() => {
+          if (this.closedElements.includes(elementId)) this.closedElements.splice(this.closedElements.indexOf(elementId), 1)
+          else this.closedElements.push(elementId)
+        })
+      }
+    }
+  }
+</script>
+
+</body></html>
