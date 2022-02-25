@@ -13,17 +13,10 @@
 <body class="bg-white">
 
 <div x-data="cms()" x-init="init()">
+  <div x-show="working" class="absolute top-0 left-0 w-full h-full bg-black opacity-75 flex items-center justify-center text-4xl text-white"><div>Working...</div></div>
   <div class="flex justify-between">
     <h2 class="text-3xl font-light w-72">Dgraph CMS</h2>
-    <div x-show="jwt" class="text-white flex items-center justify-center">
-      <button class="ml-2 px-2 py-1 bg-black border border-black uppercase text-white" @click="signOut()">Sign Out</button>
-    </div>
-    <div x-show="!jwt" class="flex items-center">
-      <input class="border border-black px-2 py-1" type="password" x-model="password">
-      <button class="ml-2 px-2 py-1 bg-black border border-black uppercase text-white" @click="signIn()">Sign In</button>
-    </div>
   </div>
-  <div x-show="working" class="absolute top-0 left-0 w-full h-full bg-black opacity-75 flex items-center justify-center text-4xl text-white"><div>Working...</div></div>
 
   <div class="flex h-screen pb-36 pr-2">
     <div class="w-72">
@@ -379,21 +372,6 @@
           tempParent = this.nodeFromId(tempParent.parent.id)
         }
         return showElement
-      },
-
-      async signIn () {
-        const mutation = `
-          mutation MyMutation {
-            signIn(password: "${this.password}")
-          }
-        `
-        const response = await this.mutateData(mutation)
-        console.log('response', response);
-        this.jwt = response.data.signIn
-      },
-
-      signOut () {
-        this.jwt = null
       },
 
       toggleElement (elementId) {
