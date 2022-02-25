@@ -1,0 +1,17 @@
+enum ContentType {
+	HTML
+	JSON
+	MARKDOWN
+	TEXT
+}
+
+type Content {
+	id: ID!
+	title: String @search(by:[fulltext])
+	slug: String @search(by:[fulltext])
+  contentType: ContentType
+	content: String @search(by:[hash])
+	parent: Content @hasInverse(field: "children")
+	children: [Content] @hasInverse(field:"parent")
+	live: Boolean
+}
